@@ -1838,6 +1838,228 @@ void c_ser_player::save_frames_as_images_slot()
 
 void c_ser_player::save_frames_as_fits_slot()
 {
+    // Pause playback if currently playing
+    bool restart_playing = false;
+    if (mp_playback_controls_widget->is_playing()) {
+        // Pause playing while frame is saved
+        mp_playback_controls_widget->pause_payback();
+        restart_playing = true;
+    }
+
+    // Use save_frames dialog to get range of frames to be saved
+    if (mp_save_frames_as_fits_Dialog == nullptr) {
+        mp_save_frames_as_fits_Dialog = new c_save_frames_dialog(this,
+                                                                   c_save_frames_dialog::SAVE_FITS,
+                                                                   mp_ser_file->get_width(),
+                                                                   mp_ser_file->get_height(),
+                                                                   m_total_frames,
+                                                                   mp_ser_file->has_timestamps());
+    }
+
+    mp_save_frames_as_fits_Dialog->set_markers(mp_playback_controls_widget->get_start_frame(),
+                                              mp_playback_controls_widget->get_end_frame(),
+                                              mp_playback_controls_widget->get_markers_enable());
+
+    if (m_crop_enable) {
+        mp_save_frames_as_fits_Dialog->set_processed_frame_size(m_crop_width, m_crop_height);
+    } else {
+        mp_save_frames_as_fits_Dialog->set_processed_frame_size(mp_ser_file->get_width(), mp_ser_file->get_height());
+    }
+
+    int ret = mp_save_frames_as_fits_Dialog->exec();
+
+    if (ret != QDialog::Rejected && m_ser_file_loaded && !mp_playback_controls_widget->is_playing()) {
+
+        // Get image filename and type to use
+        QString save_directory = mp_save_frames_as_fits_Dialog->get_last_save_directory();
+        if (save_directory.length() == 0)
+        {
+            save_directory = m_ser_directory;
+        }
+
+        const QString fits_filter = QString(tr("Flexible Image Transport System (*.fits *.fit)", "Filetype filter"));
+
+
+        bool tiff_image = false;
+        bool png_image = false;
+        QString filename = QFileDialog::getSaveFileName(this, tr("Save Frames As FITS"), save_directory, fits_filter);
+
+        const char *p_format = nullptr;
+        if (!filename.isEmpty()) {
+
+            // Handle the case on Linux where an extension is not added by the save file dialog
+            if (!filename.endsWith(".fits", Qt::CaseInsensitive) or !filename.endsWith(".fit", Qt::CaseInsensitive)) {
+                filename = filename + ".fits";
+            }
+
+            mp_save_frames_as_fits_Dialog->set_last_save_directory(QFileInfo(filename).absolutePath());
+
+            // Keep list of last saved folders up to date
+            add_string_to_stringlist(c_persistent_data::m_recent_save_folders, QFileInfo(filename).absolutePath());
+
+            // Update Save Folders Menu
+            update_recent_save_folders_menu();
+
+            QString save_folder = QFileInfo(filename).absolutePath();
+
+            int frame_active_width = mp_save_frames_as_fits_Dialog->get_active_width();
+            int frame_active_height = mp_save_frames_as_fits_Dialog->get_active_height();
+            int frame_total_width = mp_save_frames_as_fits_Dialog->get_total_width();
+            int frame_total_height = mp_save_frames_as_fits_Dialog->get_total_height();
+            int min_frame = mp_save_frames_as_fits_Dialog->get_start_frame();
+            int max_frame = mp_save_frames_as_fits_Dialog->get_end_frame();
+            int decimate_value = mp_save_frames_as_fits_Dialog->get_frame_decimation();
+            int sequence_direction = mp_save_frames_as_fits_Dialog->get_sequence_direction();
+            int frames_to_be_saved = mp_save_frames_as_fits_Dialog->get_frames_to_be_saved();
+            bool use_framenumber_in_name = mp_save_frames_as_fits_Dialog->get_use_framenumber_in_name();
+            bool append_timestamp_to_filename = mp_save_frames_as_fits_Dialog->get_append_timestamp_to_filename();
+            int required_digits_for_number = mp_save_frames_as_fits_Dialog->get_required_digits_for_number();
+
+            bool save_current_frame_only = false;
+            if (min_frame == -1) {
+                // Save current frame only
+                min_frame = mp_playback_controls_widget->slider_value();
+                max_frame = mp_playback_controls_widget->slider_value();
+                decimate_value = 1;
+                sequence_direction = 0;
+                frames_to_be_saved = 1;
+                save_current_frame_only = true;
+            }
+
+            // Save the range of frames specified by min_frame and max_frame
+            QString filename_without_extension = QFileInfo(filename).completeBaseName();
+            QString filename_extension = QFileInfo(filename).suffix();
+
+            // Setup progress dialog
+            c_save_frames_progress_dialog save_progress_dialog(this, 1, frames_to_be_saved);
+            save_progress_dialog.show();
+
+            int saved_frames = 0;
+            QString timestamp_string = "";
+
+            // Direction loop
+            int start_dir = (sequence_direction == 1) ? 1 : 0;
+            int end_dir = (sequence_direction == 0) ? 0 : 1;
+            for(int current_dir = start_dir; current_dir <= end_dir; current_dir++) {
+                int start_frame = min_frame;
+                int end_frame = max_frame;
+                if (current_dir == 1) {  // Reverse direction - count backwards
+                    // Use negative numbers so for loop works counting up or down
+                    start_frame = -max_frame;
+                    end_frame = -min_frame;
+                }
+
+                for (int frame_number = start_frame; frame_number <= end_frame; frame_number += decimate_value) {
+                    // Update progress bar
+                    saved_frames++;
+                    save_progress_dialog.set_value(saved_frames);
+
+                    // Get frame from SER file
+                    bool valid_frame = get_and_process_frame(abs(frame_number), false, false);  // get frame, no conversion to 8 bit, no processing
+                    if (valid_frame) {
+                        mp_frame_image->resize_image(frame_active_width, frame_active_height);
+                        mp_frame_image->add_bars(frame_total_width, frame_total_height);
+
+                        // Get timestamp for frame if required
+                        if (append_timestamp_to_filename) {
+                            uint64_t ts = mp_ser_file->get_timestamp();
+                            timestamp_string = "_" + QString::number(ts);
+                            if (ts > 0) {
+                                int32_t ts_year, ts_month, ts_day, ts_hour, ts_minute, ts_second, ts_microsec;
+                                c_pipp_timestamp::timestamp_to_date(
+                                    ts,
+                                    &ts_year,
+                                    &ts_month,
+                                    &ts_day,
+                                    &ts_hour,
+                                    &ts_minute,
+                                    &ts_second,
+                                    &ts_microsec);
+                                int32_t ts_millisec = ts_microsec / 1000;
+                                timestamp_string = QString("_%1%2%3_%4%5%6.%7_UT")
+                                                   .arg(ts_year, 4, 10, QLatin1Char( '0' ))
+                                                   .arg(ts_month, 2, 10, QLatin1Char( '0' ))
+                                                   .arg(ts_day, 2, 10, QLatin1Char( '0' ))
+                                                   .arg(ts_hour, 2, 10, QLatin1Char( '0' ))
+                                                   .arg(ts_minute, 2, 10, QLatin1Char( '0' ))
+                                                   .arg(ts_second, 2, 10, QLatin1Char( '0' ))
+                                                   .arg(ts_millisec, 3, 10, QLatin1Char( '0' ));
+                            } else {
+                                timestamp_string = tr("_no_timestamp", "Appended to save filename when no timestamp is available");
+                            }
+                        }
+
+                        // Insert frame number into filename
+                        int number_for_filename = (use_framenumber_in_name) ? abs(frame_number) : saved_frames;
+                        QString frame_number_string = QString("%1").arg(number_for_filename, required_digits_for_number, 10, QChar('0'));
+                        QString new_filename = save_folder +
+                                               QDir::separator() +
+                                               filename_without_extension;
+
+                        if (!save_current_frame_only) {
+                            // Include frame number in filename if not saving only current frame
+                            new_filename += QString("_") +frame_number_string;
+                        }
+
+                        // Add timestamp and file extension to name
+                        new_filename += timestamp_string +"." + filename_extension;
+
+                        if (tiff_image) {
+                            // TIFF files are saved using our own code
+                            save_tiff_file(
+                                new_filename.toUtf8().constData(),
+                                mp_frame_image->get_p_buffer(),
+                                mp_frame_image->get_width(),
+                                mp_frame_image->get_height(),
+                                mp_frame_image->get_byte_depth(),
+                                mp_frame_image->get_colour());
+                        } else if (png_image) {
+                            save_png_file(
+                                new_filename.toUtf8().constData(),
+                                mp_frame_image->get_p_buffer(),
+                                mp_frame_image->get_width(),
+                                mp_frame_image->get_height(),
+                                mp_frame_image->get_byte_depth(),
+                                mp_frame_image->get_colour());
+                        } else {
+                            // Other image files are saved using stangard QT QImage methods
+                            mp_frame_image->conv_data_ready_for_qimage();
+                            QImage save_qimage = QImage(mp_frame_image->get_p_buffer(),
+                                                        mp_frame_image->get_width(),
+                                                        mp_frame_image->get_height(),
+                                                        QImage::Format_RGB888);
+
+                            // Open file for writing
+                            QFile file(new_filename);
+                            file.open(QIODevice::WriteOnly);
+
+                            // Save the frame and close image file
+                            QPixmap::fromImage(save_qimage).save(&file, p_format);
+                            file.close();
+                        }
+                    }
+
+                    if (save_progress_dialog.was_cancelled() || !valid_frame) {
+                        // Abort frame saving
+                        break;
+                    }
+                }
+            }
+
+            // Processing has completed
+            save_progress_dialog.set_complete();
+            while (!save_progress_dialog.was_cancelled()) {
+                  // Wait
+            }
+
+        }
+    }
+
+    // Restart playing if it was playing to start with
+    if (restart_playing == true) {
+        mp_playback_controls_widget->start_playback();
+    }
+
     return;
 }
 

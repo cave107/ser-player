@@ -84,6 +84,8 @@ c_save_frames_dialog::c_save_frames_dialog(QWidget *parent,
     case SAVE_GIF:
         setWindowTitle(tr("Save Frames As Animated GIF", "Save frames dialog"));
         break;
+    case SAVE_FITS:
+        setWindowTitle(tr("Save Frames As FITS", "Save frames dialog"));
     }
 
     QDialog::setWindowFlags(QDialog::windowFlags() & ~Qt::WindowContextHelpButtonHint);
@@ -104,7 +106,7 @@ c_save_frames_dialog::c_save_frames_dialog(QWidget *parent,
     mp_save_frame_range_RButton = new QRadioButton(tr("Save Frames From: ", "Save frames dialog"));
     connect(mp_save_frame_range_RButton, SIGNAL(clicked()), this, SLOT(update_num_frames_slot()));
 
-    // Hide save current frame button when this is a save as SER file dilalog
+    // Hide save current frame button when this is a save as SER file dialog
     if (save_type != SAVE_IMAGES) {
         mp_save_current_frame_RButton->hide();
     }
@@ -312,11 +314,15 @@ c_save_frames_dialog::c_save_frames_dialog(QWidget *parent,
     mp_processing_GBox = new QGroupBox(tr("Image Processing", "Save frames dialog"));
     mp_processing_GBox->setLayout(processing_enable_VLayout);
     mp_processing_GBox->setToolTip(tr("This option controls whether active processing options are performed "
-                                             "on the frames before saving.  If this option is disabled then "
-                                             "the frames saved will be the original frames from the source SER file.  "
-                                             "If it is enabled then any processing options that are active, such as "
-                                             "debayering, gamma, gain, colour saturation or colour balance, will be "
-                                             "applied to the frames before saving.") + "<b></b>");
+                                            "on the frames before saving.  If this option is disabled then "
+                                            "the frames saved will be the original frames from the source SER file.  "
+                                            "If it is enabled then any processing options that are active, such as "
+                                            "debayering, gamma, gain, colour saturation or colour balance, will be "
+                                            "applied to the frames before saving.") + "<b></b>");
+
+    if(save_type == SAVE_FITS) {
+        mp_processing_GBox->hide();
+    }
 
 
     //
@@ -337,7 +343,7 @@ c_save_frames_dialog::c_save_frames_dialog(QWidget *parent,
     mp_resize_constrain_propotions_CBox = new QCheckBox(tr("Keep Original Aspect Ratio", "Resize Frames Control"));
     mp_resize_constrain_propotions_CBox->setChecked(true);
 
-    mp_resize_add_black_bars_CBox = new QCheckBox(tr("Add Black Bars To Keep Original Aspert Ratio"));
+    mp_resize_add_black_bars_CBox = new QCheckBox(tr("Add Black Bars To Keep Original Aspect Ratio"));
     mp_resize_add_black_bars_CBox->setChecked(false);
 
     QGridLayout *resize_frame_GLayout = new QGridLayout;

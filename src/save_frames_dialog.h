@@ -39,7 +39,7 @@ class c_save_frames_dialog : public QDialog
     Q_OBJECT
 
 public:
-    enum e_save_type {SAVE_IMAGES, SAVE_SER, SAVE_AVI, SAVE_GIF};
+    enum e_save_type {SAVE_IMAGES, SAVE_SER, SAVE_AVI, SAVE_GIF, SAVE_FITS};
 
     c_save_frames_dialog(QWidget *parent,
                          e_save_type save_type,

@@ -395,3 +395,6 @@ macx {
     macx:release:QMAKE_POST_LINK = ""
     QMAKE_CXXFLAGS += -Wno-deprecated-declarations
 }
+
+LIBS += ccfits/build/libCCfits.a
+INCLUDEPATH += ccfits
