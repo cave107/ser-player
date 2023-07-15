@@ -393,4 +393,5 @@ unix:!macx {
 macx {
     CONFIG -= app_bundle
     macx:release:QMAKE_POST_LINK = ""
+    QMAKE_CXXFLAGS += -Wno-deprecated-declarations
 }

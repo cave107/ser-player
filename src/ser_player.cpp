@@ -88,7 +88,8 @@ c_ser_player::c_ser_player(QWidget *parent)
       mp_save_frames_as_ser_Dialog(nullptr),
       mp_save_frames_as_avi_Dialog(nullptr),
       mp_save_frames_as_gif_Dialog(nullptr),
-      mp_save_frames_as_images_Dialog(nullptr)
+      mp_save_frames_as_images_Dialog(nullptr),
+      mp_save_frames_as_fits_Dialog(nullptr)
 {
     m_requested_zoom = 100;
     m_ser_file_loaded = false;
@@ -142,6 +143,11 @@ c_ser_player::c_ser_player(QWidget *parent)
     mp_save_frames_as_images_Act->setEnabled(false);
     file_menu->addAction(mp_save_frames_as_images_Act);
     connect(mp_save_frames_as_images_Act, SIGNAL(triggered()), this, SLOT(save_frames_as_images_slot()));
+
+    mp_save_frames_as_fits_Act = new QAction(tr("Save Frames As FITS...", "Menu title"), this);
+    mp_save_frames_as_fits_Act->setEnabled(false);
+    file_menu->addAction(mp_save_frames_as_fits_Act);
+    connect(mp_save_frames_as_fits_Act, SIGNAL(triggered()), this, SLOT(save_frames_as_fits_slot()));
 
 
     mp_recent_save_folders_Menu = file_menu->addMenu(tr("Recent Save Folders", "Menu title"));
@@ -1830,6 +1836,11 @@ void c_ser_player::save_frames_as_images_slot()
     }
 }
 
+void c_ser_player::save_frames_as_fits_slot()
+{
+    return;
+}
+
 
 void c_ser_player::open_save_folder_slot(QAction *action)
 {
@@ -2075,6 +2086,8 @@ void c_ser_player::open_ser_file(const QString &filename)
         mp_save_frames_as_gif_Dialog = nullptr;
         delete mp_save_frames_as_images_Dialog;
         mp_save_frames_as_images_Dialog = nullptr;
+        delete mp_save_frames_as_fits_Dialog;
+        mp_save_frames_as_fits_Dialog = nullptr;
 
         // Set SER file header details in header details dialog
         mp_header_details_dialog->set_details(
@@ -2188,6 +2201,7 @@ void c_ser_player::open_ser_file(const QString &filename)
         mp_save_frames_as_avi_Act->setEnabled(true);
         mp_save_frames_as_gif_Act->setEnabled(true);
         mp_save_frames_as_images_Act->setEnabled(true);
+        mp_save_frames_as_fits_Act->setEnabled(true);
         mp_framerate_Menu->setEnabled(true);
         mp_header_details_Act->setEnabled(true);
         mp_histogram_viewer_Act->setEnabled(true);
