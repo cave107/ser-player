@@ -23,6 +23,7 @@
 #include <QPainter>
 #include <QSlider>
 #include <QStyleOptionSlider>
+#include <QPainterPath>
 
 #include <cassert>
 

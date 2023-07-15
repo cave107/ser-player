@@ -246,7 +246,11 @@ contains(DEFINES, USE_SYSTEM_LIBPNG) {
         libpng/pngwio.c \
         libpng/pngwrite.c \
         libpng/pngwtran.c \
-        libpng/pngwutil.c
+        libpng/pngwutil.c \
+	libpng/arm/arm_init.c \
+	libpng/arm/filter_neon.S \
+	libpng/arm/filter_neon_intrinsics.c \
+	libpng/arm/palette_neon_intrinsics.c
 
     # zlib source files
     SOURCES += zlib/adler32.c \
@@ -386,3 +390,7 @@ unix:!macx {
     }
 }
 
+macx {
+    CONFIG -= app_bundle
+    macx:release:QMAKE_POST_LINK = ""
+}
