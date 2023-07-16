@@ -4,9 +4,6 @@
 [submodule "zlib"]
 	path = zlib
 	url = https://github.com/madler/zlib.git
-[submodule "ccfits"]
-	path = ccfits
-	url = https://github.com/OpenSpace/CCfits
 [submodule "cfitsio"]
 	path = cfitsio
 	url = https://github.com/healpy/cfitsio
