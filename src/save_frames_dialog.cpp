@@ -107,7 +107,7 @@ c_save_frames_dialog::c_save_frames_dialog(QWidget *parent,
     connect(mp_save_frame_range_RButton, SIGNAL(clicked()), this, SLOT(update_num_frames_slot()));
 
     // Hide save current frame button when this is a save as SER file dialog
-    if (save_type != SAVE_IMAGES) {
+    if (save_type != SAVE_IMAGES && save_type != SAVE_FITS) {
         mp_save_current_frame_RButton->hide();
     }
 

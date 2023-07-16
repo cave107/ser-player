@@ -172,7 +172,8 @@ SOURCES += src/main.cpp\
     src/playback_controls_widget.cpp \
     src/playback_controls_dialog.cpp \
     src/tiff_write.cpp \
-    src/png_write.cpp
+    src/png_write.cpp \
+    src/fits_write.cpp
 
 !contains(DEFINES, DISABLE_NEW_VERSION_CHECK): SOURCES += src/new_version_checker.cpp
 
@@ -221,7 +222,8 @@ HEADERS  += src/ser_player.h \
     src/playback_controls_widget.h \
     src/playback_controls_dialog.h \
     src/tiff_write.h \
-    src/png_write.h
+    src/png_write.h \
+    src/fits_write.h
 
 !contains(DEFINES, DISABLE_NEW_VERSION_CHECK): HEADERS += src/new_version_checker.h
 
@@ -396,5 +398,5 @@ macx {
     QMAKE_CXXFLAGS += -Wno-deprecated-declarations
 }
 
-LIBS += ccfits/build/libCCfits.a
-INCLUDEPATH += ccfits
+LIBS += cfitsio/build/libcfitsio.a
+INCLUDEPATH += cfitsio

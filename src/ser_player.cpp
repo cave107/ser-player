@@ -71,6 +71,8 @@
 #include "new_version_checker.h"
 #endif
 
+#include "fits_write.h"
+
 const QString c_ser_player::C_WINDOW_TITLE_QSTRING = QString("SER Player");
 
 // These phrases are not used in the application but are included so that translations are available for the debian appdata XML file
@@ -2004,41 +2006,19 @@ void c_ser_player::save_frames_as_fits_slot()
                         // Add timestamp and file extension to name
                         new_filename += timestamp_string +"." + filename_extension;
 
-                        if (tiff_image) {
-                            // TIFF files are saved using our own code
-                            save_tiff_file(
-                                new_filename.toUtf8().constData(),
-                                mp_frame_image->get_p_buffer(),
-                                mp_frame_image->get_width(),
-                                mp_frame_image->get_height(),
-                                mp_frame_image->get_byte_depth(),
-                                mp_frame_image->get_colour());
-                        } else if (png_image) {
-                            save_png_file(
-                                new_filename.toUtf8().constData(),
-                                mp_frame_image->get_p_buffer(),
-                                mp_frame_image->get_width(),
-                                mp_frame_image->get_height(),
-                                mp_frame_image->get_byte_depth(),
-                                mp_frame_image->get_colour());
+                        if (mp_frame_image->get_colour()) {
+                            printf("Color export not implemented yet\n");
                         } else {
-                            // Other image files are saved using stangard QT QImage methods
-                            mp_frame_image->conv_data_ready_for_qimage();
-                            QImage save_qimage = QImage(mp_frame_image->get_p_buffer(),
-                                                        mp_frame_image->get_width(),
-                                                        mp_frame_image->get_height(),
-                                                        QImage::Format_RGB888);
-
-                            // Open file for writing
-                            QFile file(new_filename);
-                            file.open(QIODevice::WriteOnly);
-
-                            // Save the frame and close image file
-                            QPixmap::fromImage(save_qimage).save(&file, p_format);
-                            file.close();
+                            bool ret = FITSWriter::save_frame_to_fits(
+                                new_filename.toUtf8().constData(),
+                                mp_frame_image->get_p_buffer(),
+                                mp_frame_image->get_width(),
+                                mp_frame_image->get_height(),
+                                mp_frame_image->get_byte_depth()
+                            );
+                            printf("[ser-player] written fits with ret code %d\n", ret);
                         }
                     }
-
                     if (save_progress_dialog.was_cancelled() || !valid_frame) {
                         // Abort frame saving
                         break;
