@@ -27,7 +27,7 @@ bool FITSWriter::save_frame_to_fits(const char *path, const uint8_t *img, const 
 
     printf("[fits-writer] created file\n");
 
-    if(fits_create_img(fp, depth*8, 2, dimensions, &status) != 0)
+    if(fits_create_img(fp, USHORT_IMG, 2, dimensions, &status) != 0)
         return false;
 
     printf("[fits-writer] created phdu\n");
